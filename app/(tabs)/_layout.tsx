@@ -42,8 +42,8 @@ export default function TabLayout() {
             <Tabs.Screen
                 name="pet"
                 options={{
-                    title: 'My Pets',
-                    headerTitle: 'สัตว์เลี้ยงของฉัน',
+                    title: 'Pet Posts',
+                    headerTitle: 'อวดลูก ๆ ของคุณ',
                     tabBarIcon: ({ color }) => <MaterialIcons name="pets" size={28} color={color} />,
                 }}
             />
