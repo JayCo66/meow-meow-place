@@ -43,7 +43,7 @@ export default function TabLayout() {
                 name="pet"
                 options={{
                     title: 'Pet Posts',
-                    headerTitle: 'อวดลูก ๆ ของคุณ',
+                    headerShown: false,
                     tabBarIcon: ({ color }) => <MaterialIcons name="pets" size={28} color={color} />,
                 }}
             />
@@ -51,7 +51,7 @@ export default function TabLayout() {
                 name="profile"
                 options={{
                     title: 'Profile',
-                    headerTitle: 'โปรไฟล์ส่วนตัว',
+                    headerShown: false,
                     tabBarIcon: ({ color }) => <MaterialIcons name="person" size={28} color={color} />,
                 }}
             />

@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
-    "@supabase/supabase-js": "^2.99.3",
+    "@supabase/supabase-js": "^2.101.1",
     "expo": "~55.0.5",
     "expo-constants": "~55.0.7",
     "expo-image-picker": "~55.0.11",

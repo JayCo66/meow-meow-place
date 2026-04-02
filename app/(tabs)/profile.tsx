@@ -93,28 +93,28 @@ export default function ProfileScreen() {
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
+            <View style={styles.header}>
+                <View style={{ width: 28 }} />
+                <Text style={styles.headerTitle}>ข้อมูลส่วนตัว</Text>
+                {!isEditing ? (
+                    <TouchableOpacity onPress={() => setIsEditing(true)}>
+                        <MaterialIcons name="edit" size={28} color="#FF9800" />
+                    </TouchableOpacity>
+                ) : (
+                    <TouchableOpacity onPress={() => {
+                        setIsEditing(false);
+                        setEditName(userData?.name || user?.displayName || '');
+                    }}>
+                        <MaterialIcons name="close" size={28} color="#757575" />
+                    </TouchableOpacity>
+                )}
+            </View>
+
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 style={styles.keyboardView}
             >
                 <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                    {/* Header Action: ปุ่มแก้ไข / บันทึก */}
-                    <View style={styles.headerActionRow}>
-                        {!isEditing ? (
-                            <TouchableOpacity style={styles.editButton} onPress={() => setIsEditing(true)}>
-                                <MaterialIcons name="edit" size={20} color="#FF9800" />
-                                <Text style={styles.editText}>แก้ไข</Text>
-                            </TouchableOpacity>
-                        ) : (
-                            <TouchableOpacity style={styles.cancelButton} onPress={() => {
-                                setIsEditing(false);
-                                setEditName(userData?.name || user?.displayName || ''); // คืนค่าเดิมถ้ากดยกเลิก
-                            }}>
-                                <MaterialIcons name="close" size={20} color="#757575" />
-                                <Text style={styles.cancelText}>ยกเลิก</Text>
-                            </TouchableOpacity>
-                        )}
-                    </View>
 
                     <View style={styles.profileHeader}>
                         <View style={styles.avatarPlaceholder}>
@@ -212,11 +212,20 @@ const styles = StyleSheet.create({
     scrollContent: { flexGrow: 1, padding: 24, paddingBottom: 40 },
     centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-    headerActionRow: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 10 },
-    editButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF3E0', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
-    editText: { color: '#FF9800', fontWeight: 'bold', marginLeft: 4, fontSize: 14 },
-    cancelButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F5F5', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
-    cancelText: { color: '#757575', fontWeight: 'bold', marginLeft: 4, fontSize: 14 },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        backgroundColor: '#FFF8E1',
+        borderBottomWidth: 1,
+        borderBottomColor: '#E0E0E0',
+    },
+    headerTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#3E2723',
+    },
 
     profileHeader: { alignItems: 'center', marginBottom: 30 },
     avatarPlaceholder: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#FF9800', justifyContent: 'center', alignItems: 'center', marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 5 },

@@ -1,9 +1,29 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { getAuth } from 'firebase/auth';
+import { db } from '../../firebaseConfig';
+import { collection, query, onSnapshot, limit } from 'firebase/firestore';
+
+interface Place {
+    id: string;
+    title: string;
+    description: string;
+    type: string;
+    image?: string;
+}
+
+const getDefaultImage = (type: string) => {
+    const defaultType = type?.toLowerCase() || '';
+    if (defaultType.includes('cafe')) return 'https://images.unsplash.com/photo-1543852786-1cf6624b9987?q=80&w=600&auto=format&fit=crop';
+    if (defaultType.includes('park')) return 'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?q=80&w=600&auto=format&fit=crop';
+    if (defaultType.includes('hospital') || defaultType.includes('clinic')) return 'https://images.unsplash.com/photo-1532938911079-1b06ac7ceec7?q=80&w=600&auto=format&fit=crop';
+    if (defaultType.includes('hotel') || defaultType.includes('resort')) return 'https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=600&auto=format&fit=crop';
+
+    return 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=600&auto=format&fit=crop';
+};
 
 export default function HomeScreen() {
     const router = useRouter();
@@ -18,27 +38,33 @@ export default function HomeScreen() {
         { id: '4', title: 'Hospital', icon: 'plus-square', color: '#E57373' },
     ];
 
-    // Mock Data สำหรับสถานที่ยอดนิยม
-    const popularPlaces = [
-        {
-            id: 'p1',
-            title: 'Meow Cafe & Bistro',
-            rating: 4.8,
-            reviews: 124,
-            image: 'https://images.unsplash.com/photo-1543852786-1cf6624b9987?q=80&w=600&auto=format&fit=crop',
-            type: 'Cafe',
-            distance: '2.5 km'
-        },
-        {
-            id: 'p2',
-            title: 'Doggo Pet Park',
-            rating: 4.5,
-            reviews: 89,
-            image: 'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?q=80&w=600&auto=format&fit=crop',
-            type: 'Park',
-            distance: '5.1 km'
-        }
-    ];
+    const [places, setPlaces] = useState<Place[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    const filteredPlaces = places.filter(place =>
+        place.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        place.type.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    useEffect(() => {
+        const q = query(collection(db, 'places'), limit(6));
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const placesData: Place[] = [];
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                placesData.push({
+                    id: doc.id,
+                    title: data.title || 'Untitled',
+                    description: data.description || '',
+                    type: data.type || 'Other',
+                    image: data.image || getDefaultImage(data.type || ''),
+                });
+            });
+            setPlaces(placesData);
+        });
+
+        return () => unsubscribe();
+    }, []);
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -51,7 +77,7 @@ export default function HomeScreen() {
                     </View>
                     <TouchableOpacity
                         style={styles.profileButton}
-                        onPress={() => console.log('Go to profile')}
+                        onPress={() => router.push('/pet')}
                     >
                         <MaterialIcons name="pets" size={24} color="#FFF" />
                     </TouchableOpacity>
@@ -64,6 +90,8 @@ export default function HomeScreen() {
                         style={styles.searchInput}
                         placeholder="ค้นหาสถานที่, คาเฟ่, สวนสาธารณะ..."
                         placeholderTextColor="#9E9E9E"
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
                     />
                     <TouchableOpacity style={styles.filterButton}>
                         <MaterialIcons name="tune" size={24} color="#FFF" />
@@ -110,19 +138,23 @@ export default function HomeScreen() {
                     </View>
 
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                        {popularPlaces.map((place) => (
+                        {filteredPlaces.map((place) => (
                             <TouchableOpacity key={place.id} style={styles.placeCard}>
                                 <Image source={{ uri: place.image }} style={styles.placeImage} />
                                 <View style={styles.placeInfo}>
                                     <Text style={styles.placeTitle} numberOfLines={1}>{place.title}</Text>
-                                    <Text style={styles.placeType}>{place.type} • {place.distance}</Text>
-                                    <View style={styles.ratingContainer}>
-                                        <MaterialIcons name="star" size={16} color="#FFC107" />
-                                        <Text style={styles.ratingText}>{place.rating} ({place.reviews})</Text>
-                                    </View>
+                                    <Text style={styles.placeType}>{place.type}</Text>
+                                    <Text style={styles.placeDescription} numberOfLines={1}>{place.description}</Text>
                                 </View>
                             </TouchableOpacity>
                         ))}
+                        {filteredPlaces.length === 0 && (
+                            <View style={{ marginLeft: 20 }}>
+                                <Text style={{ color: '#757575' }}>
+                                    {searchQuery === '' ? 'ยังไม่มีข้อมูลสถานที่' : 'ไม่พบสถานที่ที่คุณค้นหา'}
+                                </Text>
+                            </View>
+                        )}
                     </ScrollView>
                 </View>
 
@@ -332,6 +364,11 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: '#5D4037',
+    },
+    placeDescription: {
+        fontSize: 13,
+        color: '#757575',
+        marginBottom: 6,
     },
     floatingLogout: {
         position: 'absolute',

@@ -20,6 +20,14 @@ interface Post {
     likes: number;
     likedBy: string[];
     userId: string;
+    commentCount?: number;
+}
+
+interface Comment {
+    id: string;
+    userName: string;
+    text: string;
+    createdAt: any;
 }
 
 export default function PetScreen() {
@@ -35,6 +43,12 @@ export default function PetScreen() {
     const [editingPost, setEditingPost] = useState<Post | null>(null);
     const [editCaption, setEditCaption] = useState('');
 
+    // --- Comment States ---
+    const [viewingCommentsPost, setViewingCommentsPost] = useState<Post | null>(null);
+    const [postComments, setPostComments] = useState<Comment[]>([]);
+    const [newComment, setNewComment] = useState('');
+    const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+
     useEffect(() => {
         const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'));
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -47,6 +61,27 @@ export default function PetScreen() {
         });
         return () => unsubscribe();
     }, []);
+
+    // Effect สำหรับโหลดคอมเมนต์เมื่อเปิดโพสต์นั้นๆ ขึ้นมา
+    useEffect(() => {
+        if (!viewingCommentsPost) {
+            setPostComments([]);
+            return;
+        }
+
+        const commentsRef = collection(db, 'posts', viewingCommentsPost.id, 'comments');
+        const q = query(commentsRef, orderBy('createdAt', 'asc'));
+
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const commentsData: Comment[] = [];
+            querySnapshot.forEach((doc) => {
+                commentsData.push({ id: doc.id, ...doc.data() } as Comment);
+            });
+            setPostComments(commentsData);
+        });
+
+        return () => unsubscribe();
+    }, [viewingCommentsPost]);
 
     if (isInitialLoading) {
         return (
@@ -139,7 +174,7 @@ export default function PetScreen() {
                 uri: selectedImage,
                 name: fileName,
                 type: 'image/jpeg',
-            });
+            } as any);
 
             // --- ส่วนที่ 2: อัปโหลดไป Supabase Storage ---
             const { data, error } = await supabase.storage
@@ -167,7 +202,7 @@ export default function PetScreen() {
             setIsPosting(false);
             alert("โพสต์น้องๆ สำเร็จแล้ว! 🐶🐱");
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error:", error);
             alert("โพสต์ไม่สำเร็จ: " + error.message);
         } finally {
@@ -230,6 +265,34 @@ export default function PetScreen() {
             await handleUpdate(editingPost.id, editCaption);
             setEditingPost(null);
             alert("แก้ไขเรียบร้อย!");
+        }
+    };
+
+    const handleAddComment = async () => {
+        if (!viewingCommentsPost || !newComment.trim()) return;
+
+        setIsSubmittingComment(true);
+        try {
+            const commentsRef = collection(db, 'posts', viewingCommentsPost.id, 'comments');
+            await addDoc(commentsRef, {
+                userName: userName,
+                userId: auth.currentUser?.uid,
+                text: newComment,
+                createdAt: serverTimestamp()
+            });
+
+            // อัปเดตจำนวนคอมเมนต์ในโพสต์หลัก (Optional)
+            const postRef = doc(db, 'posts', viewingCommentsPost.id);
+            await updateDoc(postRef, {
+                commentCount: increment(1)
+            });
+
+            setNewComment('');
+        } catch (error) {
+            console.error("Error adding comment: ", error);
+            alert("ไม่สามารถแสดงความคิดเห็นได้");
+        } finally {
+            setIsSubmittingComment(false);
         }
     };
 
@@ -297,8 +360,14 @@ export default function PetScreen() {
                                 color={isLiked ? "#F44336" : "#424242"}
                             />
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.actionButton}>
+                        <TouchableOpacity 
+                            style={styles.actionButton}
+                            onPress={() => setViewingCommentsPost(item)}
+                        >
                             <MaterialIcons name="chat-bubble-outline" size={26} color="#424242" />
+                            {item.commentCount ? (
+                                <Text style={styles.commentBadge}>{item.commentCount}</Text>
+                            ) : null}
                         </TouchableOpacity>
                     </View>
 
@@ -318,6 +387,7 @@ export default function PetScreen() {
         <SafeAreaView style={styles.container} edges={['top']}>
             {/* Header ของหน้าแอป */}
             <View style={styles.header}>
+                <View style={{ width: 32 }} /> {/* Placeholder to balance the add button */}
                 <Text style={styles.headerTitle}>สังคมคนรักสัตว์</Text>
                 <TouchableOpacity onPress={() => setIsPosting(!isPosting)}>
                     <MaterialIcons name={isPosting ? "close" : "add-box"} size={32} color="#3E2723" />
@@ -402,6 +472,66 @@ export default function PetScreen() {
                     </View>
                 </View>
             )}
+
+            {/* Modal สำหรับคอมเมนต์ */}
+            {viewingCommentsPost && (
+                <View style={styles.editOverlay}>
+                    <KeyboardAvoidingView
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        style={styles.commentModal}
+                    >
+                        <View style={styles.commentHeader}>
+                            <Text style={styles.editTitle}>ความคิดเห็น</Text>
+                            <TouchableOpacity onPress={() => setViewingCommentsPost(null)}>
+                                <MaterialIcons name="close" size={24} color="#757575" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <FlatList
+                            data={postComments}
+                            keyExtractor={(item) => item.id}
+                            style={styles.commentList}
+                            renderItem={({ item }) => (
+                                <View style={styles.commentItem}>
+                                    <View style={styles.avatarPlaceholderMini}>
+                                        <Text style={styles.avatarTextMini}>{item.userName.charAt(0)}</Text>
+                                    </View>
+                                    <View style={styles.commentContent}>
+                                        <Text style={styles.commentUser}>{item.userName}</Text>
+                                        <Text style={styles.commentText}>{item.text}</Text>
+                                    </View>
+                                </View>
+                            )}
+                            ListEmptyComponent={() => (
+                                <View style={styles.emptyComments}>
+                                    <Text style={styles.emptyCommentsText}>ยังไม่มีความคิดเห็น มาเริ่มคุยกันเถอะ!</Text>
+                                </View>
+                            )}
+                        />
+
+                        <View style={styles.commentInputRow}>
+                            <TextInput
+                                style={styles.commentInput}
+                                placeholder="เขียนความคิดเห็น..."
+                                value={newComment}
+                                onChangeText={setNewComment}
+                                multiline
+                            />
+                            <TouchableOpacity
+                                style={[styles.sendButton, !newComment.trim() && { opacity: 0.5 }]}
+                                onPress={handleAddComment}
+                                disabled={!newComment.trim() || isSubmittingComment}
+                            >
+                                {isSubmittingComment ? (
+                                    <ActivityIndicator size="small" color="#FF9800" />
+                                ) : (
+                                    <MaterialIcons name="send" size={24} color="#FF9800" />
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    </KeyboardAvoidingView>
+                </View>
+            )}
         </SafeAreaView>
     );
 }
@@ -415,14 +545,13 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 15,
+        padding: 16,
         backgroundColor: '#FFF8E1',
         borderBottomWidth: 1,
         borderBottomColor: '#E0E0E0',
     },
     headerTitle: {
-        fontSize: 22,
+        fontSize: 20,
         fontWeight: 'bold',
         color: '#3E2723',
     },
@@ -439,7 +568,9 @@ const styles = StyleSheet.create({
     postHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 12,
+        justifyContent: 'space-between',
+        paddingHorizontal: 12,
+        paddingVertical: 10,
     },
     avatarPlaceholder: {
         width: 40,
@@ -472,9 +603,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         marginBottom: 8,
     },
-    actionButton: {
-        marginRight: 16,
-    },
+
     likesText: {
         fontWeight: 'bold',
         color: '#3E2723',
@@ -492,13 +621,9 @@ const styles = StyleSheet.create({
     createPostContainer: {
         backgroundColor: '#FFFFFF',
         padding: 16,
+        marginBottom: 10,
         borderBottomWidth: 1,
         borderBottomColor: '#E0E0E0',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
     },
     inputRow: {
         flexDirection: 'row',
@@ -536,6 +661,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        paddingHorizontal: 16,
+        marginBottom: 10,
     },
     photoButton: {
         flexDirection: 'row',
@@ -596,13 +723,6 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         fontSize: 16,
     },
-    postHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-    },
     userInfo: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -655,4 +775,96 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontWeight: 'bold',
     },
+    commentModal: {
+        backgroundColor: '#FFF',
+        borderRadius: 15,
+        height: '70%',
+        padding: 20,
+        elevation: 5,
+    },
+    commentHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0F0F0',
+        paddingBottom: 10,
+    },
+    commentList: {
+        flex: 1,
+    },
+    commentItem: {
+        flexDirection: 'row',
+        marginBottom: 15,
+        alignItems: 'flex-start',
+    },
+    avatarPlaceholderMini: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        backgroundColor: '#FF9800',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 10,
+    },
+    avatarTextMini: {
+        color: '#FFF',
+        fontWeight: 'bold',
+        fontSize: 14,
+    },
+    commentContent: {
+        flex: 1,
+        backgroundColor: '#F5F5F5',
+        padding: 10,
+        borderRadius: 12,
+    },
+    commentUser: {
+        fontWeight: 'bold',
+        fontSize: 14,
+        color: '#3E2723',
+        marginBottom: 2,
+    },
+    commentText: {
+        fontSize: 14,
+        color: '#424242',
+    },
+    commentInputRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderTopWidth: 1,
+        borderTopColor: '#F0F0F0',
+        paddingTop: 10,
+        marginBottom: 10,
+    },
+    commentInput: {
+        flex: 1,
+        backgroundColor: '#F5F5F5',
+        borderRadius: 20,
+        paddingHorizontal: 15,
+        paddingVertical: 8,
+        marginRight: 10,
+        maxHeight: 100,
+    },
+    sendButton: {
+        padding: 5,
+    },
+    emptyComments: {
+        alignItems: 'center',
+        padding: 20,
+    },
+    emptyCommentsText: {
+        color: '#9E9E9E',
+        fontSize: 14,
+    },
+    actionButton: {
+        marginRight: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    commentBadge: {
+        fontSize: 12,
+        color: '#757575',
+        marginLeft: 4,
+    }
 });
