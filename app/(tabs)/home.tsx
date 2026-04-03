@@ -21,6 +21,7 @@ const getDefaultImage = (type: string) => {
     if (defaultType.includes('park')) return 'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?q=80&w=600&auto=format&fit=crop';
     if (defaultType.includes('hospital') || defaultType.includes('clinic')) return 'https://images.unsplash.com/photo-1532938911079-1b06ac7ceec7?q=80&w=600&auto=format&fit=crop';
     if (defaultType.includes('hotel') || defaultType.includes('resort')) return 'https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=600&auto=format&fit=crop';
+    if (defaultType.includes('restaurant') || defaultType.includes('food')) return 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=600&auto=format&fit=crop';
 
     return 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=600&auto=format&fit=crop';
 };
@@ -32,10 +33,11 @@ export default function HomeScreen() {
 
     // Mock Data สำหรับหมวดหมู่
     const categories = [
-        { id: '1', title: 'Cafe', icon: 'coffee', color: '#FFB74D' },
-        { id: '2', title: 'Park', icon: 'tree', color: '#81C784' },
-        { id: '3', title: 'Hotel', icon: 'hotel', color: '#64B5F6' },
-        { id: '4', title: 'Hospital', icon: 'plus-square', color: '#E57373' },
+        { id: 'cafe', title: 'Cafe', icon: 'coffee', color: '#FFB74D' },
+        { id: 'park', title: 'Park', icon: 'tree', color: '#81C784' },
+        { id: 'hotel', title: 'Hotel', icon: 'hotel', color: '#64B5F6' },
+        { id: 'hospital', title: 'Hospital', icon: 'plus-square', color: '#E57373' },
+        { id: 'restaurant', title: 'Restaurant', icon: 'utensils', color: '#BA68C8' },
     ];
 
     const [places, setPlaces] = useState<Place[]>([]);
@@ -93,9 +95,6 @@ export default function HomeScreen() {
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                     />
-                    <TouchableOpacity style={styles.filterButton}>
-                        <MaterialIcons name="tune" size={24} color="#FFF" />
-                    </TouchableOpacity>
                 </View>
 
                 {/* Categories Section */}
@@ -103,7 +102,11 @@ export default function HomeScreen() {
                     <Text style={styles.sectionTitle}>หมวดหมู่</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesList}>
                         {categories.map((cat) => (
-                            <TouchableOpacity key={cat.id} style={styles.categoryItem}>
+                            <TouchableOpacity
+                                key={cat.id}
+                                style={styles.categoryItem}
+                                onPress={() => router.push({ pathname: '/all-places', params: { filter: cat.id.toLowerCase() } })}
+                            >
                                 <View style={[styles.categoryIcon, { backgroundColor: cat.color }]}>
                                     <FontAwesome5 name={cat.icon} size={20} color="#FFF" />
                                 </View>
@@ -132,7 +135,7 @@ export default function HomeScreen() {
                 <View style={styles.sectionContainer}>
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>ยอดนิยมใกล้คุณ</Text>
-                        <TouchableOpacity>
+                        <TouchableOpacity onPress={() => router.push('/all-places')}>
                             <Text style={styles.seeAllText}>ดูทั้งหมด</Text>
                         </TouchableOpacity>
                     </View>
@@ -221,20 +224,6 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.05,
         shadowRadius: 4,
         elevation: 2,
-    },
-    filterButton: {
-        width: 50,
-        height: 50,
-        backgroundColor: '#FF9800',
-        borderRadius: 12,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginLeft: 12,
-        shadowColor: '#FF9800',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        elevation: 3,
     },
     sectionContainer: {
         marginBottom: 25,

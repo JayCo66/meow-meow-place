@@ -170,14 +170,6 @@ export default function ProfileScreen() {
                                         : '-'}
                                 </Text>
                             </View>
-
-                            <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
-                                <View style={styles.labelRow}>
-                                    <MaterialIcons name="pets" size={20} color="#9E9E9E" style={styles.infoIcon} />
-                                    <Text style={styles.infoLabel}>สัตว์เลี้ยง (My Pets):</Text>
-                                </View>
-                                <Text style={styles.infoValue}>{userData?.pets ? userData.pets.length : 0} ตัว</Text>
-                            </View>
                         </View>
                         {/* คำเตือนเรื่องการเปลี่ยนอีเมล */}
                         <Text style={styles.noticeText}>* อีเมลที่ใช้ลงทะเบียนไม่สามารถเปลี่ยนแปลงได้</Text>

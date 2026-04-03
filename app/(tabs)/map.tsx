@@ -35,8 +35,10 @@ export default function MapScreen() {
         longitude: ''
     });
     const [searchQuery, setSearchQuery] = useState('');
+    const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
 
-    const filteredPlaces = places.filter(place => 
+
+    const filteredPlaces = places.filter(place =>
         place.title.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
@@ -119,7 +121,7 @@ export default function MapScreen() {
         <SafeAreaView style={styles.container} edges={['top']}>
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>แผนที่สถานที่ (Map)</Text>
-                
+
                 <View style={styles.searchBarContainer}>
                     <MaterialIcons name="search" size={20} color="#757575" style={{ marginRight: 8 }} />
                     <TextInput
@@ -152,25 +154,9 @@ export default function MapScreen() {
                     <Marker
                         key={place.id}
                         coordinate={place.coordinate}
-                        title={place.title}
-                        description={place.description}
+                        onPress={() => setSelectedPlace(place)}
                         pinColor={place.type === 'cafe' ? '#FF9800' : place.type === 'park' ? '#4CAF50' : '#F44336'}
-                    >
-                        {/* Custom Marker Callout (ป๊อปอัปเมื่อกดที่หมุด) */}
-                        <Callout onPress={() => openInGoogleMaps(place.googlemapUrl)}>
-                            <View style={styles.calloutContainer}>
-                                 <Text style={styles.calloutTitle}>{place.title}</Text>
-                                 <Text style={styles.calloutDescription}>{place.description}</Text>
-                                 
-                                 {place.googlemapUrl ? (
-                                     <View style={styles.navigationButton}>
-                                         <MaterialIcons name="map" size={14} color="#FFF" />
-                                         <Text style={styles.navigationButtonText}>เปิด Google Maps</Text>
-                                     </View>
-                                 ) : null}
-                             </View>
-                         </Callout>
-                    </Marker>
+                    />
                 ))}
             </MapView>
 
@@ -273,6 +259,59 @@ export default function MapScreen() {
                             </TouchableOpacity>
                         </ScrollView>
                     </KeyboardAvoidingView>
+                </View>
+            </Modal>
+
+            {/* Modal แสดงรายละเอียดสถานที่ */}
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={selectedPlace !== null}
+                onRequestClose={() => setSelectedPlace(null)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.detailSheet}>
+                        <View style={styles.detailPullBar} />
+
+                        <View style={styles.detailHeader}>
+                            <View style={styles.detailTitleContainer}>
+                                <Text style={styles.detailTitle}>{selectedPlace?.title}</Text>
+                                <View style={[
+                                    styles.detailTypeBadge,
+                                    { backgroundColor: selectedPlace?.type === 'cafe' ? '#FFF3E0' : selectedPlace?.type === 'park' ? '#E8F5E9' : '#FFEBEE' }
+                                ]}>
+                                    <MaterialIcons
+                                        name={selectedPlace?.type === 'cafe' ? 'local-cafe' : selectedPlace?.type === 'park' ? 'park' : 'local-hospital'}
+                                        size={14}
+                                        color={selectedPlace?.type === 'cafe' ? '#FF9800' : selectedPlace?.type === 'park' ? '#4CAF50' : '#F44336'}
+                                    />
+                                    <Text style={[
+                                        styles.detailTypeText,
+                                        { color: selectedPlace?.type === 'cafe' ? '#FF9800' : selectedPlace?.type === 'park' ? '#4CAF50' : '#F44336' }
+                                    ]}>
+                                        {selectedPlace?.type.toUpperCase()}
+                                    </Text>
+                                </View>
+                            </View>
+                            <TouchableOpacity onPress={() => setSelectedPlace(null)} style={styles.detailCloseButton}>
+                                <MaterialIcons name="close" size={24} color="#757575" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.detailScrollContent}>
+                            <Text style={styles.detailDescriptionLabel}>รายละเอียด:</Text>
+                            <Text style={styles.detailDescription}>
+                                {selectedPlace?.description || 'ไม่มีข้อมูลรายละเอียด'}
+                            </Text>
+                            <TouchableOpacity
+                                style={styles.detailNavigationButton}
+                                onPress={() => openInGoogleMaps(selectedPlace?.googlemapUrl)}
+                            >
+                                <MaterialIcons name="directions" size={24} color="#FFF" />
+                                <Text style={styles.detailNavigationButtonText}>นำทาง (Google Maps)</Text>
+                            </TouchableOpacity>
+                        </ScrollView>
+                    </View>
                 </View>
             </Modal>
         </SafeAreaView>
@@ -452,5 +491,98 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontSize: 18,
         fontWeight: 'bold',
+    },
+    // สไตล์ใหม่สำหรับ Detail Sheet
+    detailSheet: {
+        backgroundColor: '#FFF',
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
+        padding: 24,
+        maxHeight: '50%', // แถบครึ่งจอ
+        width: '100%',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        elevation: 10,
+    },
+    detailPullBar: {
+        width: 40,
+        height: 5,
+        backgroundColor: '#E0E0E0',
+        borderRadius: 3,
+        alignSelf: 'center',
+        marginBottom: 16,
+    },
+    detailHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 16,
+    },
+    detailTitleContainer: {
+        flex: 1,
+    },
+    detailTitle: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: '#3E2723',
+        marginBottom: 8,
+    },
+    detailTypeBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 20,
+    },
+    detailTypeText: {
+        fontSize: 11,
+        fontWeight: 'bold',
+        marginLeft: 4,
+    },
+    detailCloseButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#F5F5F5',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginLeft: 16,
+    },
+    detailScrollContent: {
+        paddingBottom: 20,
+    },
+    detailDescriptionLabel: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#757575',
+        marginBottom: 6,
+    },
+    detailDescription: {
+        fontSize: 16,
+        color: '#5D4037',
+        lineHeight: 24,
+        marginBottom: 20,
+    },
+    detailNavigationButton: {
+        backgroundColor: '#FF9800',
+        flexDirection: 'row',
+        height: 56,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#FF9800',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 6,
+    },
+    detailNavigationButtonText: {
+        color: '#FFF',
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginLeft: 10,
     },
 });
